@@ -7,20 +7,22 @@ use rand::prelude::*;
 
 const PLAYER_SIZE: f32 = 155.;
 const PROJECTILE_SIZE: f32 = 65.;
+const PLAYER_SPEED: f32 = 400.;
 
 const ENEMY_SIZE: f32 = 100.;
 const NUMBER_OF_ENEMIES: i32 = 5;
-const ENEMY_SPEED: f32 = 200.;
+const ENEMY_SPEED: f32 = 230.;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .add_systems(Startup,setup)
+        .add_systems(Startup,(setup))
         .add_systems(FixedUpdate,
                      (player_movement_system,
                       player_shoot_system,
                       projectile_movement_system,
-                      enemy_moviment_system)
+                      enemy_moviment_system,
+                      )
         )
         .add_systems(Update, animate_sprite)
         .run();
@@ -53,6 +55,13 @@ struct AnimationIndices {
 
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
+
+struct Message {
+    text: String,
+    position: Vec2,
+    color: Color,
+    font_size: f32,
+}
 
 fn setup(
     mut commands: Commands,
@@ -131,16 +140,8 @@ fn player_movement_system(
     time: Res<Time>
 ) {
     for (_player, mut transform) in query.iter_mut() {
-        const SPEED: f32 = 500.;
 
         let mut direction = Vec3::ZERO;
-        if keyboard_input.pressed(KeyCode::W) {
-            direction += Vec3::Y;
-        }
-
-        if keyboard_input.pressed(KeyCode::S) {
-            direction -= Vec3::Y;
-        }
 
         if keyboard_input.pressed(KeyCode::A) {
             direction -= Vec3::X;
@@ -150,7 +151,7 @@ fn player_movement_system(
             direction += Vec3::X;
         }
 
-        transform.translation += direction * SPEED * time.delta_seconds();
+        transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
     }
 }
 
@@ -238,14 +239,39 @@ fn enemy_moviment_system(
 
     for (mut _enemy, mut transform) in query.iter_mut() {
         let direction = Vec3::new(_enemy.direction.x, 0., 0.);
+        println!("{}", direction);
         transform.translation += direction * ENEMY_SPEED * time.delta_seconds();
 
         if transform.translation.x >= window.width() / 2. {
-            let new_direction = Vec3::new(-_enemy.direction.x, 0., 0.);
-            transform.translation += new_direction * ENEMY_SPEED * time.delta_seconds();
-        } else if transform.translation.x <= window.width() / 2. {
-            let new_direction = Vec3::new(_enemy.direction.x, 0., 0.);
-            transform.translation += new_direction * ENEMY_SPEED * time.delta_seconds();
+            _enemy.direction.x = -_enemy.direction.x;
+        }
+        if transform.translation.x <= window.width() - window.width() * 1.5 {
+            _enemy.direction.x = -_enemy.direction.x;
         }
     }
 }
+
+// fn spawn_message(
+//     commands: &mut Commands,
+//     message: &str,
+//     position: Vec2,
+//     color: Color,
+//     font_size: f32,
+// ) {
+//     let message = Text::from_section(
+//         &message.to_string(),
+//         TextStyle {
+//             font_size,
+//             color,
+//             ..default()
+//         }
+//     );
+//     commands.spawn(()).insert_bundle(Text2dBundle {
+//         text: Text {
+//             sections: vec![message],
+//             ..default()
+//         },
+//         transform: Transform::from_translation(Vec3::new(position.x, position.y, 0.)),
+//         ..default()
+//     })
+// }
